@@ -8,42 +8,40 @@ app_port: 7860
 tags:
   - openenv
 ---
-# HedgeMind — A Real-World Benchmark for Financial AI Agents
+# HedgeMind V2 — Advanced Multi-Asset Market & Investor Simulation
 
-HedgeMind is a multi-factor hedge fund simulation environment for OpenEnv. It simulates market conditions (trend, volatility, regime shifts), constraints of a financial portfolio, risk management signals, and realistic investor actions (inflow based on good performance, outflow based on bad performance).
+HedgeMind V2 is a high-fidelity, highly complex multi-asset hedge fund simulation environment built explicitly for the Meta PyTorch OpenEnv Hackathon. 
 
-The environment challenges an AI agent across three progressively difficult market scenarios to test decision-making under uncertainty, market crashes, and bull runs.
+Rather than simple "toy" environments that accept basic Buy/Sell signals, HedgeMind forces AI agents to continuously manage a 5-asset portfolio against stochastic market shocks, compounding investor behavior, and strict transaction costs.
 
-## Observation Space
-The agent receives a unified `Observation` (Pydantic model) containing:
-- **prices**: `List[float]` - The last 10 asset prices.
-- **portfolio**: Tracking of `cash` (`float`) and `position` (`int`).
-- **signals**: Synthetic market signals including `strategy_signal` (momentum proxy), `risk_signal` (volatility proxy), and the current `regime` (NORMAL, BULL, BEAR, CRASH).
+## 🌟 What makes HedgeMind V2 unique?
 
-## Action Space
-Discrete Enum representing basic trading:
-- **BUY**: Allocates maximum affordable cash to positions.
-- **SELL**: Liquidates entire position for cash.
-- **HOLD**: Maintains the current portfolio allocation.
+1. **Continuous 5-Asset Engine**: Agents dictate float percentage weights across `TECH`, `FINANCE`, `ENERGY`, `HEALTHCARE`, and `BONDS` instead of a standard `BUY/SELL` discrete array.
+2. **Markov-Chain Regime Shifts**: Instead of a "static" market, Geometric Brownian Motion drift and volatility modifiers dynamically shift mid-episode. A Bull market can suddenly collapse into a Flash Crash, shocking the AI agent.
+3. **Behavioral Investor Trust System**: Massive drawdowns decay an intrinsic "Trust Score," leading to aggressive compounding AUM (Assets Under Management) outflows from simulated retail investors.
+4. **Overtrading Penalties**: High-frequency erratic turnover behavior is aggressively penalized mathematically via basis-point transaction fees, directly bleeding portfolio value if the agent ping-pongs between allocations.
+5. **Real-time Glassmorphism Dashboard**: A premium, web-based UI API visualizer to track all 5 asset allocations and trust multipliers live during inference.
+
+## Observation Space (`Dict`)
+The agent receives a heavily detailed unified `Observation` dictionary:
+- **prices**: `Dict[str, List[float]]` - Historic arrays of the last 10 prices dedicated per asset.
+- **portfolio**: Tracking of `cash` (`float`) alongside exact equity `positions` (`Dict[str, int]`).
+- **signals**: Synthetic market signals including `strategy_signal` (momentum proxy), `risk_signal` (volatility proxy), and the live Markov `regime`.
+
+## Action Space (`Dict`)
+Agents must output a continuous allocation dictionary representing target portfolio weights summing to 1.0. Example output format string:
+```json
+{"TECH": 0.3, "FINANCE": 0.2, "ENERGY": 0.1, "HEALTHCARE": 0.2, "BONDS": 0.2}
+```
 
 ## Tasks
-1. **task_easy (Capital Preservation)**: In a normal market, the agent is judged purely on minimizing drawdowns.
-2. **task_medium (Profit Maximization)**: In a bull market, the agent is challenged to maximize long-term returns.
-3. **task_hard (Crisis Management)**: In a simulated crash environment, the agent must preserve capital during a sudden drop and recover value thereafter.
+1. **task_easy (Capital Preservation)**: Judged heavily on minimizing drawdowns and keeping retail investor trust intact.
+2. **task_medium (Profit Maximization)**: Maximizing absolute returns during favorable alpha regimes.
+3. **task_hard (Crisis Management)**: Surviving and navigating stochastic flash-crash probability spikes mid-episode without hemorrhaging total AUM.
 
 ## Setup Instructions
 
-### Local Execution (Python)
-1. Install requirements:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Start the OpenEnv server interface (FastAPI):
-   ```bash
-   python server/app.py
-   ```
-
-### Docker
+### Docker (Hackathon Default)
 1. Build the image:
    ```bash
    docker build -t hedgemind .
@@ -54,11 +52,12 @@ Discrete Enum representing basic trading:
    ```
 
 ## Baseline Evaluation / Inference
-To test an OpenAI or HF agent against the HedgeMind environment, simply execute the inference baseline script:
+To test an OpenAI or HF agent against the HedgeMind environment, simply execute the inference baseline script against the API logic:
 
 ```bash
-export OPENAI_API_KEY="your-key"
+export OPENAI_API_KEY="your-api-key"
+export HF_TOKEN="your-hf-token"
 python inference.py
 ```
 
-The inference script conforms perfectly to the strict `[START]`, `[STEP]`, and `[END]` evaluation logs over 100 simulation episodes per task, recording the rewards. 
+The inference script conforms strictly to the `[START]`, `[STEP]`, and `[END]` evaluation logs over the validation simulation episodes, accurately translating raw LLM generation into valid continuous dictionaries utilizing standard LLM token ingestion.
