@@ -10,7 +10,7 @@ from env.hedge_env import HedgeEnv
 # Load configuration from environment variables
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN = os.environ.get("HF_TOKEN", "")
+HF_TOKEN = os.environ.get("HF_TOKEN")
 
 # Exact logging format wrappers to guarantee strict format
 def log_start(task: str, env: str, model: str):
@@ -56,7 +56,7 @@ async def run_task(client: AsyncOpenAI, task_name: str):
                     model=MODEL_NAME,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.0,
-                    max_tokens=50
+                    max_tokens=200
                 )
                 raw_action = response.choices[0].message.content.strip()
                 
@@ -98,13 +98,15 @@ async def run_task(client: AsyncOpenAI, task_name: str):
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 async def main() -> None:
-    client = AsyncOpenAI(
-        api_key=os.environ.get("OPENAI_API_KEY", "dummy-key-for-local"),
-        base_url=API_BASE_URL
-    )
-    
-    for task in ["task_easy", "task_medium", "task_hard"]:
-        await run_task(client, task)
+    try:
+        client = AsyncOpenAI(
+            api_key=HF_TOKEN or os.environ.get("OPENAI_API_KEY", "dummy-key-for-local"),
+            base_url=API_BASE_URL
+        )
+        for task in ["task_easy", "task_medium", "task_hard"]:
+            await run_task(client, task)
+    except Exception as e:
+        print(f"Unhandled exception in main: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
