@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HedgeMind V2 Interactive Terminal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(20, 27, 45, 0.6);
+            --panel-border: rgba(65, 84, 126, 0.3);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        select,
+        button {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background: rgba(45, 55, 72, 0.8);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .btn-random {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .btn-auto {
+            background: linear-gradient(90deg, rgba(6, 182, 212, 0.2), rgba(139, 92, 246, 0.2));
+            border-color: var(--accent-purple);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .card-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+
+        .value-sub {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .chart-container {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            backdrop-filter: blur(12px);
+            height: 400px;
+            width: 100%;
+        }
+
+        .allocations-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+        }
+
+        .alloc-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .alloc-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .alloc-val {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-cyan);
+        }
+
+        .status-positive {
+            color: var(--success);
+        }
+
+        .status-negative {
+            color: var(--danger);
+        }
+
+        /* Progress Bar */
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .badge {
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .badge.NORMAL {
+            color: var(--text-main);
+            border: 1px solid var(--text-muted);
+        }
+
+        .badge.BULL {
+            color: var(--success);
+            border: 1px solid var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .badge.BEAR {
+            color: var(--warning);
+            border: 1px solid var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .badge.CRASH {
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="header">
+        <h1>HedgeMind V2 OpenEnv</h1>
+        <div class="controls">
+            <span class="badge" id="step-badge">Step: 0</span>
+            <select id="task-select">
+                <option value="task_easy">Easy (Capital Preservation)</option>
+                <option value="task_medium">Medium (Profit Max)</option>
+                <option value="task_hard">Hard (Crisis Mgt)</option>
+            </select>
+            <button onclick="resetEnv()">↻ Reset</button>
+            <div style="width: 1px; height: 20px; background: var(--panel-border); margin: 0 10px;"></div>
+            <button class="btn-random" onclick="stepEnvRandom()">⚄ Step Random Reallocation</button>
+            <button class="btn-auto" id="auto-btn" onclick="toggleAuto()">⚡ Auto Agent</button>
+        </div>
+    </header>
+
+    <div class="dashboard-grid">
+        <div class="card">
+            <span class="card-label">Total Portfolio</span>
+            <div class="card-value" id="val-portfolio">$100,000</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="bar-portfolio" style="width: 50%"></div>
+            </div>
+        </div>
+        <div class="card">
+            <span class="card-label">Investor Trust & AUM</span>
+            <div class="card-value" id="val-aum">$100,000</div>
+            <span class="value-sub">Trust Score: <span id="val-trust" style="color:var(--accent-cyan)">1.00</span> |
+                Users: <span id="val-users">100</span></span>
+        </div>
+        <div class="card">
+            <span class="card-label">Market Regime & Risk</span>
+            <div class="card-value"><span class="badge NORMAL" id="val-regime">NORMAL</span></div>
+            <span class="value-sub" id="val-risk" style="margin-top:0.5rem">Risk Signal: 0.00</span>
+        </div>
+        <div class="card">
+            <span class="card-label">Task Return</span>
+            <div class="card-value status-positive" id="val-return">0.00%</div>
+        </div>
+        <div class="card">
+            <span class="card-label">Agent Reward</span>
+            <div class="card-value" id="val-current-reward" style="color: var(--text-main)">0.000</div>
+            <span class="value-sub">Avg Reward: <span id="val-avg-reward">0.000</span></span>
+        </div>
+    </div>
+
+    <div class="allocations-grid">
+        <div class="alloc-card">
+            <div class="alloc-label">TECH</div>
+            <div class="alloc-val" id="alloc-TECH">0.0%</div>
+        </div>
+        <div class="alloc-card">
+            <div class="alloc-label">FINANCE</div>
+            <div class="alloc-val" id="alloc-FINANCE">0.0%</div>
+        </div>
+        <div class="alloc-card">
+            <div class="alloc-label">ENERGY</div>
+            <div class="alloc-val" id="alloc-ENERGY">0.0%</div>
+        </div>
+        <div class="alloc-card">
+            <div class="alloc-label">HEALTHCARE</div>
+            <div class="alloc-val" id="alloc-HEALTHCARE">0.0%</div>
+        </div>
+        <div class="alloc-card">
+            <div class="alloc-label">BONDS</div>
+            <div class="alloc-val" id="alloc-BONDS">0.0%</div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="portfolioChart"></canvas>
+    </div>
+
+    <script>
+        let chart;
+        let autoInterval = null;
+        let isAutoRunning = false;
+
+        function formatCurrency(num) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('portfolioChart').getContext('2d');
+            let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(6, 182, 212, 0.5)');
+            gradient.addColorStop(1, 'rgba(139, 92, 246, 0.0)');
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Portfolio Value',
+                        data: [],
+                        borderColor: '#06b6d4',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+                    },
+                    interaction: { intersect: false, mode: 'index' }
+                }
+            });
+        }
+
+        async function fetchState() {
+            try {
+                const res = await fetch('/state');
+                const data = await res.json();
+                updateDashboard(data);
+            } catch (e) { console.error("Error fetching state", e); }
+        }
+
+        async function resetEnv() {
+            if (isAutoRunning) toggleAuto();
+            const task = document.getElementById('task-select').value;
+            try {
+                await fetch('/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task: task })
+                });
+                fetchState();
+            } catch (e) { console.error("Error resetting", e); }
+        }
+
+        function stepEnvRandom() {
+            const weights = [Math.random(), Math.random(), Math.random(), Math.random(), Math.random()];
+            const sum = weights.reduce((a, b) => a + b, 0);
+            const action = {
+                "TECH": weights[0] / sum,
+                "FINANCE": weights[1] / sum,
+                "ENERGY": weights[2] / sum,
+                "HEALTHCARE": weights[3] / sum,
+                "BONDS": weights[4] / sum
+            };
+            stepEnv(action);
+        }
+
+        async function stepEnv(action) {
+            try {
+                const res = await fetch('/step', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: action })
+                });
+                const data = await res.json();
+                fetchState();
+
+                if (data.done && isAutoRunning) {
+                    toggleAuto(); // Stop if done
+                }
+            } catch (e) { console.error("Error stepping", e); }
+        }
+
+        function toggleAuto() {
+            const btn = document.getElementById('auto-btn');
+            isAutoRunning = !isAutoRunning;
+            if (isAutoRunning) {
+                btn.style.boxShadow = '0 0 15px rgba(139, 92, 246, 0.6)';
+                btn.innerText = '🛑 Stop Auto';
+                autoInterval = setInterval(() => {
+                    stepEnvRandom();
+                }, 400);
+            } else {
+                btn.style.boxShadow = 'none';
+                btn.innerText = '⚡ Auto Agent';
+                clearInterval(autoInterval);
+            }
+        }
+
+        function updateDashboard(state) {
+            document.getElementById('val-portfolio').innerText = formatCurrency(state.total_value);
+            document.getElementById('val-aum').innerText = formatCurrency(state.investor_capital);
+            document.getElementById('step-badge').innerText = `Step: ${state.step}`;
+            document.getElementById('val-trust').innerText = state.trust_score.toFixed(2);
+            document.getElementById('val-users').innerText = state.num_investors;
+
+            const startVal = 100000;
+            const returnPct = ((state.total_value - startVal) / startVal) * 100;
+            const retEl = document.getElementById('val-return');
+            retEl.innerText = `${returnPct > 0 ? '+' : ''}${returnPct.toFixed(2)}%`;
+            retEl.className = `card-value ${returnPct >= 0 ? 'status-positive' : 'status-negative'}`;
+
+            // Calc rewards
+            let avgReward = 0;
+            let currentReward = 0;
+            if (state.reward_history.length > 0) {
+                avgReward = state.reward_history.reduce((a, b) => a + b, 0) / state.reward_history.length;
+                currentReward = state.reward_history[state.reward_history.length - 1];
+            }
+            document.getElementById('val-avg-reward').innerText = avgReward.toFixed(3);
+            const curRwEl = document.getElementById('val-current-reward');
+            curRwEl.innerText = currentReward.toFixed(3);
+            curRwEl.style.color = currentReward >= 0 ? "var(--success)" : "var(--danger)";
+
+            // Progress bars
+            const portPct = Math.min(Math.max((state.total_value / 200000) * 100, 5), 100);
+            document.getElementById('bar-portfolio').style.width = `${portPct}%`;
+
+            if (state.current_observation) {
+                const regime = state.current_observation.signals.regime;
+                const regEl = document.getElementById('val-regime');
+                regEl.innerText = regime;
+                regEl.className = `badge ${regime}`;
+                document.getElementById('val-risk').innerText = `Risk Signal: ${state.current_observation.signals.risk_signal.toFixed(2)}`;
+
+                // Calculate allocation percentages
+                const positions = state.current_observation.portfolio.positions;
+                const prices = state.current_observation.prices;
+                const assets = ["TECH", "FINANCE", "ENERGY", "HEALTHCARE", "BONDS"];
+
+                let current_positions_value = 0;
+                let allocVars = {};
+                assets.forEach(a => {
+                    const latestPrice = prices[a][prices[a].length - 1];
+                    const val = positions[a] * latestPrice;
+                    allocVars[a] = val;
+                });
+
+                assets.forEach(a => {
+                    let pct = 0;
+                    if (state.total_value > 0) {
+                        pct = (allocVars[a] / state.total_value) * 100;
+                    }
+                    if (isNaN(pct)) pct = 0;
+                    document.getElementById(`alloc-${a}`).innerText = `${pct.toFixed(1)}%`;
+                });
+            }
+
+            // Update Chart
+            const labels = state.portfolio_history.map((_, i) => i);
+            const data = state.portfolio_history.map(h => h.total_value);
+
+            if (data.length === state.step) {
+                labels.push(state.step);
+                data.push(state.total_value);
+            }
+
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = data;
+            chart.update();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            fetchState();
+        });
+    </script>
+</body>
+
+</html>

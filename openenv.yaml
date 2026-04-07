@@ -1,0 +1,44 @@
+name: HedgeMind
+version: 1.0.0
+description: "A real-world OpenEnv environment simulating a hedge fund. Features market simulation with regime shifts, portfolio tracking, continuous rewards, and performance-based investor capital flow."
+
+action_space:
+  type: dict
+  properties:
+    TECH: { type: float, minimum: 0.0, maximum: 1.0 }
+    FINANCE: { type: float, minimum: 0.0, maximum: 1.0 }
+    ENERGY: { type: float, minimum: 0.0, maximum: 1.0 }
+    HEALTHCARE: { type: float, minimum: 0.0, maximum: 1.0 }
+    BONDS: { type: float, minimum: 0.0, maximum: 1.0 }
+
+observation_space:
+  type: dict
+  properties:
+    prices:
+      type: dict
+      description: "Dict of 5 assets, each containing a list of their last 10 prices."
+    portfolio:
+      type: dict
+      properties:
+        cash:
+          type: float
+        positions:
+          type: dict
+    signals:
+      type: dict
+      properties:
+        strategy_signal:
+          type: float
+        risk_signal:
+          type: float
+        regime:
+          type: string
+          choices: ["NORMAL", "BULL", "BEAR", "CRASH"]
+
+tasks:
+  - name: task_easy
+    description: "Capital Preservation: Avoid losses and maintain portfolio stability."
+  - name: task_medium
+    description: "Profit Maximization: Maximize returns during a bull market."
+  - name: task_hard
+    description: "Crisis Management: Survive and recover from a sudden market crash."
